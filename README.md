@@ -1,5 +1,8 @@
 # dot-emacs
 
+![screenshot](screenshot.png)
+
+
 ## Packages
 
 * ag

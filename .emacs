@@ -20,7 +20,7 @@
  '(inhibit-startup-screen t)
  '(package-selected-packages
    (quote
-    (ag company-ghci smart-mode-line ocodo-svg-modelines cmake-mode helm-descbinds scheme-complete nginx-mode dockerfile-mode docker-compose-mode docker auto-package-update rjsx-mode yaml-mode arduino-mode web-mode vue-mode irony haskell-mode js2-mode company flycheck-rust racer rust-mode flycheck all-the-icons-gnus use-package spaceline beacon doom-modeline octicons dracula-theme all-the-icons-ivy neotree doom-themes)))
+    (pretty-mode spaceline-all-the-icons flymd ag company-ghci smart-mode-line ocodo-svg-modelines cmake-mode helm-descbinds scheme-complete nginx-mode dockerfile-mode docker-compose-mode docker auto-package-update rjsx-mode yaml-mode arduino-mode web-mode vue-mode irony haskell-mode js2-mode company flycheck-rust racer rust-mode flycheck all-the-icons-gnus use-package spaceline beacon doom-modeline octicons dracula-theme all-the-icons-ivy neotree doom-themes)))
  '(scroll-bar-mode nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -67,11 +67,12 @@
 (setq inhibit-compacting-font-caches t)
 
 ;; Modeline mode
-(require 'smart-mode-line)
-(setq sml/theme 'atom-one-dark)
 (column-number-mode)
-(sml/setup)
-
+(require 'spaceline)
+(require 'spaceline-all-the-icons)
+(spaceline-all-the-icons-theme)
+(spaceline-toggle-all-the-icons-projectile-off)
+(setq spaceline-all-the-icons-separator-type 'slant)
 
 
 ;;===========================;;
@@ -100,6 +101,11 @@
 (setq neo-theme (if  'icons 'arrow))
 (setq neo-theme (if window-system 'icons 'arrow))
 
+
+;;=============;;
+;; Pretty mode ;;
+;;=============;;
+(require 'pretty-mode)
 
 
 ;;=============;;
@@ -135,10 +141,7 @@
 ;;=========================;;
 ;; Flycheck syntax checker ;;
 ;;=========================;;
-(use-package flycheck
-  :ensure t
-  :init (global-flycheck-mode))
-
+(global-flycheck-mode)
 
 
 ;;==============;;
@@ -171,10 +174,19 @@
 ;;=====;;
 ;; WEB ;;
 ;;=====;;
+
+
+;; Front end
 (add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
+
+;; Javascript
 (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+(setq js2-include-node-externs t)
+
+
+;; React native
 (add-to-list 'auto-mode-alist '("components\\/.*\\.js\\'" . rjsx-mode))
 (add-to-list 'auto-mode-alist '("screens\\/.*\\.js\\'" . rjsx-mode))
 
@@ -193,6 +205,7 @@
 ;;=========;;
 (require 'company-ghci)
 (push 'company-ghci company-backends)
+(add-hook 'haskell-mode-hook 'turn-on-pretty-mode)
 (add-hook 'haskell-mode-hook 'company-mode)
 ;;; To get completions in the REPL
 (add-hook 'haskell-interactive-mode-hook 'company-mode)

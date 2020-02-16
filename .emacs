@@ -20,7 +20,7 @@
  '(inhibit-startup-screen t)
  '(package-selected-packages
    (quote
-    (pretty-mode spaceline-all-the-icons flymd ag company-ghci smart-mode-line ocodo-svg-modelines cmake-mode helm-descbinds scheme-complete nginx-mode dockerfile-mode docker-compose-mode docker auto-package-update rjsx-mode yaml-mode arduino-mode web-mode vue-mode irony haskell-mode js2-mode company flycheck-rust racer rust-mode flycheck all-the-icons-gnus use-package spaceline beacon doom-modeline octicons dracula-theme all-the-icons-ivy neotree doom-themes)))
+    (javap-mode markdown-preview-mode markdown-mode pretty-mode spaceline-all-the-icons flymd ag company-ghci smart-mode-line ocodo-svg-modelines cmake-mode helm-descbinds scheme-complete nginx-mode dockerfile-mode docker-compose-mode docker auto-package-update rjsx-mode yaml-mode arduino-mode web-mode vue-mode irony haskell-mode js2-mode company flycheck-rust racer rust-mode flycheck all-the-icons-gnus use-package spaceline beacon doom-modeline octicons dracula-theme all-the-icons-ivy neotree doom-themes)))
  '(scroll-bar-mode nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -47,9 +47,15 @@
 (beacon-mode 1)
 (setq beacon-color "#9d0006")
 
-;; Remove menu and tool bars
+;; Remove menu, tool and scroll bars
 (menu-bar-mode -1)
 (tool-bar-mode -1)
+(defun my/disable-scroll-bars (frame)
+  (modify-frame-parameters frame
+                           '((vertical-scroll-bars . nil)
+                             (horizontal-scroll-bars . nil))))
+(add-hook 'after-make-frame-functions 'my/disable-scroll-bars)
+
 
 ;; Linum mode
 (require 'linum-relative)
@@ -59,7 +65,7 @@
 (set-face-attribute 'linum nil :foreground "#afaf00")
 
 ;; Setup font
-(set-frame-font "Source Code Pro 11" nil t)
+(add-to-list 'default-frame-alist '(font . "Hasklig-11"))
 
 ;; Icons mode
 (require 'all-the-icons)
@@ -98,9 +104,7 @@
 (setq neo-force-change-root t)
 
 ;; Icons
-(setq neo-theme (if  'icons 'arrow))
-(setq neo-theme (if window-system 'icons 'arrow))
-
+(setq neo-theme 'icons)
 
 ;;=============;;
 ;; Pretty mode ;;
@@ -221,5 +225,10 @@
 (transient-mark-mode 1)
 
 
+;;==============;;
+;; EMACS SERVER ;;
+;;==============;;
+(server-start)
 
 (provide '.emacs)
+

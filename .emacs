@@ -20,7 +20,7 @@
  '(inhibit-startup-screen t)
  '(package-selected-packages
    (quote
-    (javap-mode markdown-preview-mode markdown-mode pretty-mode spaceline-all-the-icons flymd ag company-ghci smart-mode-line ocodo-svg-modelines cmake-mode helm-descbinds scheme-complete nginx-mode dockerfile-mode docker-compose-mode docker auto-package-update rjsx-mode yaml-mode arduino-mode web-mode vue-mode irony haskell-mode js2-mode company flycheck-rust racer rust-mode flycheck all-the-icons-gnus use-package spaceline beacon doom-modeline octicons dracula-theme all-the-icons-ivy neotree doom-themes)))
+    (eww-lnum w3m projectile discord-emacs quelpa fish-mode javap-mode markdown-preview-mode markdown-mode pretty-mode spaceline-all-the-icons flymd ag company-ghci smart-mode-line ocodo-svg-modelines cmake-mode helm-descbinds scheme-complete nginx-mode dockerfile-mode docker-compose-mode docker auto-package-update rjsx-mode yaml-mode arduino-mode web-mode vue-mode irony haskell-mode js2-mode company flycheck-rust racer rust-mode flycheck all-the-icons-gnus use-package spaceline beacon doom-modeline octicons dracula-theme all-the-icons-ivy neotree doom-themes)))
  '(scroll-bar-mode nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -225,10 +225,24 @@
 (transient-mark-mode 1)
 
 
+;;===========;;
+;; Discord   ;;
+;;===========;;
+(load-file "~/.emacs.d/discord/discord.el")
+(discord-emacs-run "384815451978334208")
+
+
 ;;==============;;
 ;; EMACS SERVER ;;
 ;;==============;;
 (server-start)
+
+
+;;=====;;
+;; W3M ;;
+;;=====;;
+(setq w3m-default-display-inline-images t)
+
 
 (provide '.emacs)
 

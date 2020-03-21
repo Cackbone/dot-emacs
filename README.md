@@ -1,6 +1,10 @@
 # dot-emacs
 
-![screenshot](screenshot.png)
+![preview](.readme/screenshot.png)
+
+
+## Discord activity
+![screenshot](.readme/discord.png)
 
 
 ## Fish script

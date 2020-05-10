@@ -4,7 +4,7 @@
 
 
 Emacs version: *26*
-last-update: <2020-05-10 14:13:19 cedriclegendre>
+last-update: <2020-05-10 14:18:30 cedriclegendre>
 
 ** Overview
 #+CAPTION: Preview
@@ -16,7 +16,7 @@ last-update: <2020-05-10 14:13:19 cedriclegendre>
 
 *** Todo list [0%] :
 **** TODO Replace `require` by `use-package`
-
+**** TODO Move from neotree to treemacs
 
 ** Fish macro
 #+BEGIN_SRC fish

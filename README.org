@@ -4,7 +4,7 @@
 
 
 Emacs version: *26*
-last-update: <2020-05-10 13:59:18 cedriclegendre>
+last-update: <2020-05-10 14:13:19 cedriclegendre>
 
 ** Overview
 #+CAPTION: Preview
@@ -14,8 +14,8 @@ last-update: <2020-05-10 13:59:18 cedriclegendre>
 [[./.readme/discord.png]]
 
 
-** Todo [0%] :
-*** TODO Replace `require` by `use-package`
+*** Todo list [0%] :
+**** TODO Replace `require` by `use-package`
 
 
 ** Fish macro

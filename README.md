@@ -1,16 +1,408 @@
-# dot-emacs
-
-![preview](.readme/screenshot.png)
-
-
-## Discord activity
-![screenshot](.readme/discord.png)
+#+TITLE: EMACS CONFIG
+#+LANGUAGE: en
+#+OPTIONS: H:5 toc:nil creator:Cédric Legendre email:nil author:t timestamp:t tags:nil
 
 
-## Fish script
+Emacs version: *26*
+last-update: <2020-05-10 13:59:18 cedriclegendre>
 
-```fish
+** Overview
+#+CAPTION: Preview
+[[./.readme/screenshot.png]]
+
+#+CAPTION: Discord activity preview
+[[./.readme/discord.png]]
+
+
+** Todo [0%] :
+*** TODO Replace `require` by `use-package`
+
+
+** Fish macro
+#+BEGIN_SRC fish
 function ne
     emacsclient -ncu -a "" $argv &
 end
-```
+#+END_SRC
+
+
+** Package manager
+#+BEGIN_SRC emacs-lisp
+;;==============;;
+;; Melpa config ;;
+;;==============;;
+
+(require 'package)
+(setq custom-file "~/.emacs.d/package-manager.el")
+
+
+(let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
+                    (not (gnutls-available-p))))
+       (url (concat (if no-ssl "http" "https") "://melpa.org/packages/")))
+  (add-to-list 'package-archives (cons "melpa" url) t))
+(when (< emacs-major-version 24)
+  (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
+(package-initialize)
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(custom-safe-themes
+   (quote
+    ("855eb24c0ea67e3b64d5d07730b96908bac6f4cd1e5a5986493cbac45e9d9636" default)))
+ '(inhibit-startup-screen t)
+ '(package-selected-packages
+   (quote
+    (rustic gcmh company-lsp dap-mode lsp-ui lsp-mode eww-lnum w3m projectile discord-emacs quelpa fish-mode javap-mode markdown-preview-mode markdown-mode pretty-mode spaceline-all-the-icons flymd ag company-ghci smart-mode-line ocodo-svg-modelines cmake-mode helm-descbinds scheme-complete nginx-mode dockerfile-mode docker-compose-mode docker auto-package-update rjsx-mode yaml-mode arduino-mode web-mode vue-mode irony haskell-mode js2-mode company flycheck-rust racer rust-mode flycheck all-the-icons-gnus use-package spaceline beacon doom-modeline octicons dracula-theme all-the-icons-ivy neotree doom-themes)))
+ '(scroll-bar-mode nil))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
+(when (not package-archive-contents)
+  (package-refresh-contents))
+
+(add-to-list 'package-archives
+             '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(add-to-list 'package-archives
+             '("gnu" . "http://elpa.gnu.org/packages/") t)
+
+;; Install all packages
+(package-install-selected-packages)
+#+END_SRC
+
+
+** Server initialization
+#+BEGIN_SRC emacs-lisp
+;; Emacs server
+(require 'server)
+(server-start)
+
+
+;; Garbage collection
+(use-package gcmh
+  :config
+  (setq gcmh-idle-delay 10 ; garbage collect after 10s of idle time
+        gcmh-high-cons-threshold 16777216) ; 16mb
+  )
+
+(setq gc-cons-threshold 16777216
+      gc-cons-percentage 0.1)
+
+(gcmh-mode +1)
+#+END_SRC
+
+
+** Theme and UI
+#+BEGIN_SRC emacs-lisp
+;;=============;;
+;; EMACS THEME ;;
+;;=============;;
+
+;; Gruvbox theme
+(load-theme 'gruvbox-dark-hard t)
+
+;; Beacon mode
+(beacon-mode 1)
+(setq beacon-color "#9d0006")
+
+;; Remove menu, tool and scroll bars
+(menu-bar-mode -1)
+(tool-bar-mode -1)
+(defun my/disable-scroll-bars (frame)
+  (modify-frame-parameters frame
+                           '((vertical-scroll-bars . nil)
+                             (horizontal-scroll-bars . nil))))
+(add-hook 'after-make-frame-functions 'my/disable-scroll-bars)
+
+
+;; Linum mode
+(global-linum-mode t)
+(setq linum-format "%4d  ")
+(set-face-attribute 'linum nil :background "unspecified-bg")
+(set-face-attribute 'linum nil :foreground "#afaf00")
+
+;; Setup font
+(add-to-list 'default-frame-alist '(font . "Hasklig-11"))
+
+;; Icons mode
+(require 'all-the-icons)
+(setq all-the-icons-color-icons 11)
+(setq inhibit-compacting-font-caches t)
+
+;; Modeline mode
+(column-number-mode)
+(require 'spaceline)
+(require 'spaceline-all-the-icons)
+(spaceline-all-the-icons-theme)
+(spaceline-toggle-all-the-icons-projectile-off)
+(setq spaceline-all-the-icons-separator-type 'slant)
+
+
+;; Pretty mode
+(require 'pretty-mode)
+
+
+;;===========================;;
+;; Emacs file menu (neotree) ;;
+;;===========================;;
+(require 'neotree)
+
+;; Bind neotree on f8 key
+(global-set-key [f8] 'neotree-toggle)
+
+;; Open neotree on emacs startup
+(defun neotree-startup ()
+  (interactive)
+  (neotree-show)
+  (call-interactively 'other-window))
+
+(if (daemonp)
+    (add-hook 'server-switch-hook #'neotree-startup)
+  (add-hook 'after-init-hook #'neotree-startup))
+(add-hook 'window-setup-hook #'neotree-find-project-root)
+
+(setq neo-autorefresh 'true)
+(setq neo-force-change-root t)
+
+;; Icons
+(setq neo-theme 'icons)
+#+END_SRC
+
+
+** Spaces and indentations
+#+BEGIN_SRC emacs-lisp
+;;=============;;
+;; WHITESPACES ;;
+;;=============;;
+(require 'whitespace)
+(setq whitespace-display-mappings
+
+      '((space-mark   ?\     [?.]     [?.])
+        (newline-mark ?\n    [?◀ ?\n])
+        (tab-mark     ?\t    [?\u2502 ?\t] [?\\ ?\t])))
+(setq whitespace-style '(face trailing tabs newline tab-mark newline-mark))
+(set-face-background 'whitespace-tab "#unspecified-bg")
+(set-face-foreground 'whitespace-tab "#2b3c44")
+(set-face-background 'whitespace-space "unspecified-bg")
+(set-face-foreground 'whitespace-space "#111111")
+(set-face-background 'whitespace-newline "unspecified-bg")
+(set-face-foreground 'whitespace-newline "#2b3c44")
+(global-whitespace-mode t)
+(add-hook 'before-save-hook 'whitespace-cleanup)
+
+
+;;=============;;
+;;    TABS     ;;
+;;=============;;
+(setq-default indent-tabs-mode nil)
+(setq-default tab-width 4)
+(defvaralias 'c-basic-offset 'tab-width)
+#+END_SRC
+
+
+** Org mode
+#+BEGIN_SRC emacs-lisp
+;;=========;;
+;; ORGMODE ;;
+;;=========;;
+
+;; Trello like checklist
+(setq org-todo-keywords
+    '((sequence
+        "TODO"
+        "DOING"
+        "DONE"
+    ))
+)
+
+(setq org-todo-keyword-faces
+'(
+      ("TODO" . org-todo)
+      ("DOING" . (:foreground "orange" :weight bold))
+      ("DONE" . org-done)
+))
+
+(setq org-priority-faces '((?A . (:foreground "red" :weight 'bold))
+                           (?B . (:foreground "yellow" :weight 'bold))
+                           (?C . (:foreground "green"))))
+
+(defun checklist-task ()
+   (save-excursion
+     (org-back-to-heading t)
+     (let ((beg (point)) end)
+       (end-of-line)
+       (setq end (point))
+       (goto-char beg)
+       (if (re-search-forward "\\[\\([0-9]*%\\)\\]\\|\\[\\([0-9]*\\)/\\([0-9]*\\)\\]" end t)
+        (if (match-end 1)
+         (if (equal (match-string 1) "100%")
+          (org-todo "DONE")
+          (if (or (equal (match-string 1) "0%") (equal (match-string 1) "%"))
+           (org-todo "TODO")
+           (org-todo "DOING")))
+         (if
+          (and (> (match-end 2) (match-beginning 2)) (equal (match-string 2) (match-string 3)))
+           (org-todo "DONE")
+           (if
+            (and (> (match-end 2) (match-beginning 2)) (equal (match-string 2) "0"))
+             (org-todo "TODO")
+             (org-todo "DOING"))))))))
+
+(add-to-list 'org-checkbox-statistics-hook 'checklist-task)
+
+;; Update timestamp before save
+(add-hook 'org-mode-hook (lambda ()
+                               (set (make-local-variable 'time-stamp-pattern) "8/last-update:[ \t]+.")))
+(add-hook 'before-save-hook 'time-stamp)
+
+#+END_SRC
+
+
+** Languages
+
+
+
+*** Enable Flycheck and Company globally
+#+BEGIN_SRC emacs-lisp
+(global-flycheck-mode)
+
+(add-hook 'after-init-hook 'global-company-mode)
+#+END_SRC
+
+
+*** Language Server Protocol
+#+BEGIN_SRC emacs-lisp
+;;==========;;
+;; LSP MODE ;;
+;;==========;;
+(use-package lsp-mode
+  :commands lsp
+  :hook ((lsp-mode . lsp-ui-sideline-mode)
+         (lsp-mode . lsp-enable-which-key-integration))
+  :bind (:map lsp-mode-map
+              ("C-c C-t" . lsp-describe-thing-at-point))
+  :config
+  (setq lsp-prefer-flymake nil)
+  (setq lsp-auto-guess-root t
+        lsp-keep-workspace-alive nil))
+
+
+;; Lsp UI
+(use-package lsp-ui
+  :config
+  (define-key lsp-ui-mode-map [remap xref-find-definitions] #'lsp-ui-peek-find-definitions)
+  (define-key lsp-ui-mode-map [remap xref-find-references] #'lsp-ui-peek-find-references)
+  (setq
+        lsp-ui-sideline-show-hover t
+        lsp-ui-doc-enable t
+        lsp-ui-sideline-show-diagnostics t
+        lsp-ui-sideline-ignore-duplicate t))
+(add-hook 'after-init-hook 'lsp-ui-sideline-mode)
+
+
+;; Setup company lsp
+(use-package company-lsp
+  :init (setq company-minimum-prefix-length 1 company-idle-delay 0.0)
+  :config (push 'company-lsp company-backends))
+
+
+;; Setup dap mode
+(use-package dap-mode
+  :defer 4
+  :config
+  (add-hook 'dap-stopped-hook
+            (lambda (arg) (call-interactively #'dap-hydra)))
+  (add-hook 'dap-mode-hook #'dap-ui-mode)
+  (dap-mode 1))
+#+END_SRC
+
+
+*** Rust
+#+BEGIN_SRC emacs-lisp
+(use-package rustic
+  :init
+  (setq rustic-lsp-server 'rust-analyzer)
+  (setq rustic-flycheck-setup-mode-line-p t)
+  :hook ((rustic-mode . (lambda ()
+                          (lsp-ui-doc-mode)
+                          (lsp-ui-sideline-mode)
+                          (lsp-ui-sideline-toggle-symbols-info)
+                          (smart-dash-mode)
+                          (company-mode))))
+  :config
+  (setq rustic-format-on-save t)
+  (setq rust-indent-method-chain t)
+
+  (defun my-rustic-mode-hook ()
+    (set (make-local-variable 'company-backends)
+         '((company-lsp company-files :with company-yasnippet)
+           (company-dabbrev-code company-dabbrev))))
+  (add-hook 'rustic-mode-hook #'my-rustic-mode-hook)
+  :ensure t
+ )
+#+END_SRC
+
+
+*** Web
+#+BEGIN_SRC emacs-lisp
+(with-eval-after-load 'lsp-mode
+  (mapc #'lsp-flycheck-add-mode '(typescript-mode js2-mode css-mode vue-html-mode web-mode)))
+
+;; Front end modes
+(add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("components\\/.*\\.js\\'" . rjsx-mode))
+(add-to-list 'auto-mode-alist '("screens\\/.*\\.js\\'" . rjsx-mode))
+
+
+;; Javascript
+(add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+(setq js2-include-node-externs t)
+#+END_SRC
+
+
+
+*** Scheme
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'auto-mode-alist '("\\.scheme\\'" . scheme-mode))
+(add-to-list 'auto-mode-alist '("\\.scm\\'" . scheme-mode))
+#+END_SRC
+
+
+*** React native
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'auto-mode-alist '("components\\/.*\\.js\\'" . rjsx-mode))
+(add-to-list 'auto-mode-alist '("screens\\/.*\\.js\\'" . rjsx-mode))
+#+END_SRC
+
+
+*** Haskell
+#+BEGIN_SRC emacs-lisp
+(require 'company-ghci)
+(push 'company-ghci company-backends)
+(add-hook 'haskell-mode-hook 'turn-on-pretty-mode)
+(add-hook 'haskell-mode-hook 'company-mode)
+;; Completions in REPL
+(add-hook 'haskell-interactive-mode-hook 'company-mode)
+#+END_SRC
+
+
+
+** Miscellaneous
+
+*** W3M
+#+BEGIN_SRC emacs-lisp
+(setq w3m-default-display-inline-images t)
+#+END_SRC
+
+
+*** Discord
+#+BEGIN_SRC emacs-lisp
+(load-file "~/.emacs.d/discord/discord.el")
+(discord-emacs-run "384815451978334208")
+#+END_SRC

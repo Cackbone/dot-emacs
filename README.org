@@ -2,8 +2,11 @@
 #+LANGUAGE: en
 #+OPTIONS: H:5 toc:nil creator:Cédric Legendre email:nil author:t timestamp:t tags:nil
 
+[[./.readme/stallman.png]]
+
 - Emacs version: *26.3*
-- last-update: <2020-05-10 14:45:45 cedriclegendre>
+- last-update: <2020-05-10 14:50:08 cedriclegendre>
+
 
 ** Overview
 #+CAPTION: Preview

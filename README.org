@@ -5,7 +5,7 @@
 [[./.readme/stallman.png]]
 
 - Emacs version: *26.3*
-- last-update: <2020-05-10 14:50:08 cedriclegendre>
+- last-update: <2020-05-16 03:05:31 cedriclegendre>
 
 
 ** Overview
@@ -16,9 +16,11 @@
 [[./.readme/discord.png]]
 
 
-*** Todo list [0%] :
-**** TODO Replace `require` by `use-package`
+*** Todo list [66%] :
+**** DONE Replace `require` by `use-package`
 **** TODO Move from neotree to treemacs
+**** DONE Set backup files in a unique folder
+
 
 ** Fish macro
 #+BEGIN_SRC fish
@@ -35,8 +37,6 @@ end
 ;;==============;;
 
 (require 'package)
-(setq custom-file "~/.emacs.d/package-manager.el")
-
 
 (let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
                     (not (gnutls-available-p))))
@@ -71,9 +71,28 @@ end
              '("melpa" . "http://melpa.milkbox.net/packages/") t)
 (add-to-list 'package-archives
              '("gnu" . "http://elpa.gnu.org/packages/") t)
+#+END_SRC
 
-;; Install all packages
-(package-install-selected-packages)
+
+** Init
+#+BEGIN_SRC emacs-lisp
+;; Save backups inside a unique folder
+(let ((backup-dir "~/.emacs/.backups")
+      (auto-saves-dir "~/.emacs/.backups"))
+  (dolist (dir (list backup-dir auto-saves-dir))
+    (when (not (file-directory-p dir))
+      (make-directory dir t)))
+  (setq backup-directory-alist `(("." . ,backup-dir))
+        auto-save-file-name-transforms `((".*" ,auto-saves-dir t))
+        auto-save-list-file-prefix (concat auto-saves-dir ".saves-")
+        tramp-backup-directory-alist `((".*" . ,backup-dir))
+        tramp-auto-save-directory auto-saves-dir))
+
+(setq backup-by-copying t    ; Don't delink hardlinks
+      delete-old-versions t  ; Clean up the backups
+      version-control t      ; Use version numbers on backups,
+      kept-new-versions 10    ; keep some new versions
+      kept-old-versions 5)   ; and some old ones, too
 #+END_SRC
 
 
@@ -86,15 +105,13 @@ end
 
 ;; Garbage collection
 (use-package gcmh
+  :ensure t
   :config
   (setq gcmh-idle-delay 10 ; garbage collect after 10s of idle time
         gcmh-high-cons-threshold 16777216) ; 16mb
-  )
-
-(setq gc-cons-threshold 16777216
+  (setq gc-cons-threshold 16777216
       gc-cons-percentage 0.1)
-
-(gcmh-mode +1)
+  (gcmh-mode +1))
 #+END_SRC
 
 
@@ -105,11 +122,19 @@ end
 ;;=============;;
 
 ;; Gruvbox theme
-(load-theme 'gruvbox-dark-hard t)
+(use-package gruvbox-theme
+    :ensure t
+    :load-path "themes"
+    :config
+    (load-theme 'gruvbox-dark-hard t)
+)
 
 ;; Beacon mode
-(beacon-mode 1)
-(setq beacon-color "#9d0006")
+(use-package beacon
+    :ensure t
+    :config
+    (beacon-mode 1)
+    (setq beacon-color "#9d0006"))
 
 ;; Remove menu, tool and scroll bars
 (menu-bar-mode -1)
@@ -131,47 +156,56 @@ end
 (add-to-list 'default-frame-alist '(font . "Hasklig-11"))
 
 ;; Icons mode
-(require 'all-the-icons)
-(setq all-the-icons-color-icons 11)
-(setq inhibit-compacting-font-caches t)
+(use-package all-the-icons
+    :ensure t
+    :config
+    (setq all-the-icons-color-icons 11)
+    (setq inhibit-compacting-font-caches t)
+)
 
 ;; Modeline mode
-(column-number-mode)
-(require 'spaceline)
-(require 'spaceline-all-the-icons)
-(spaceline-all-the-icons-theme)
-(spaceline-toggle-all-the-icons-projectile-off)
-(setq spaceline-all-the-icons-separator-type 'slant)
+(use-package spaceline
+    :ensure t
+    :config
+    (column-number-mode)
+)
+(use-package spaceline-all-the-icons
+    :ensure t
+    :config
+    (spaceline-all-the-icons-theme)
+    (spaceline-toggle-all-the-icons-projectile-off)
+    (setq spaceline-all-the-icons-separator-type 'slant)
+)
 
 
 ;; Pretty mode
-(require 'pretty-mode)
+(use-package pretty-mode
+    :ensure t
+)
 
 
 ;;===========================;;
 ;; Emacs file menu (neotree) ;;
 ;;===========================;;
-(require 'neotree)
+(use-package neotree
+    :ensure t
+    :bind ([f8] . neotree-toggle)
+    :init
+    ;; Open neotree on emacs startup
+    (defun neotree-startup ()
+        (interactive)
+        (neotree-show)
+        (call-interactively 'other-window))
+    :config
+    (if (daemonp)
+        (add-hook 'server-switch-hook #'neotree-startup)
+        (add-hook 'after-init-hook #'neotree-startup))
+    (add-hook 'window-setup-hook #'neotree-find-project-root)
 
-;; Bind neotree on f8 key
-(global-set-key [f8] 'neotree-toggle)
-
-;; Open neotree on emacs startup
-(defun neotree-startup ()
-  (interactive)
-  (neotree-show)
-  (call-interactively 'other-window))
-
-(if (daemonp)
-    (add-hook 'server-switch-hook #'neotree-startup)
-  (add-hook 'after-init-hook #'neotree-startup))
-(add-hook 'window-setup-hook #'neotree-find-project-root)
-
-(setq neo-autorefresh 'true)
-(setq neo-force-change-root t)
-
-;; Icons
-(setq neo-theme 'icons)
+    (setq neo-autorefresh 'true)
+    (setq neo-force-change-root t)
+    (setq neo-theme 'icons)
+)
 #+END_SRC
 
 
@@ -181,21 +215,24 @@ end
 ;; WHITESPACES ;;
 ;;=============;;
 (require 'whitespace)
-(setq whitespace-display-mappings
 
-      '((space-mark   ?\     [?.]     [?.])
-        (newline-mark ?\n    [?◀ ?\n])
-        (tab-mark     ?\t    [?\u2502 ?\t] [?\\ ?\t])))
+(setq whitespace-display-mappings
+    '((space-mark   ?\     [?.]     [?.])
+      (newline-mark ?\n    [?◀ ?\n])
+      (tab-mark     ?\t    [?\u2502 ?\t] [?\\ ?\t])))
+
 (setq whitespace-style '(face trailing tabs newline tab-mark newline-mark))
+
 (set-face-background 'whitespace-tab "#unspecified-bg")
 (set-face-foreground 'whitespace-tab "#2b3c44")
 (set-face-background 'whitespace-space "unspecified-bg")
 (set-face-foreground 'whitespace-space "#111111")
 (set-face-background 'whitespace-newline "unspecified-bg")
 (set-face-foreground 'whitespace-newline "#2b3c44")
-(global-whitespace-mode t)
-(add-hook 'before-save-hook 'whitespace-cleanup)
 
+(global-whitespace-mode t)
+
+(add-hook 'before-save-hook 'whitespace-cleanup)
 
 ;;=============;;
 ;;    TABS     ;;
@@ -273,9 +310,17 @@ end
 
 *** Enable Flycheck and Company globally
 #+BEGIN_SRC emacs-lisp
-(global-flycheck-mode)
+(use-package flycheck
+    :ensure t
+    :config
+    (global-flycheck-mode)
+)
 
-(add-hook 'after-init-hook 'global-company-mode)
+(use-package company
+    :ensure t
+    :config
+    (add-hook 'after-init-hook 'global-company-mode)
+)
 #+END_SRC
 
 
@@ -355,45 +400,61 @@ end
 *** Web
 #+BEGIN_SRC emacs-lisp
 (with-eval-after-load 'lsp-mode
-  (mapc #'lsp-flycheck-add-mode '(typescript-mode js2-mode css-mode vue-html-mode web-mode)))
+  (mapc #'lsp-flycheck-add-mode '(typescript-mode js2-mode css-mode vue-html-mode web-mode rjsx-mode)))
 
 ;; Front end modes
-(add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
-(add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
-(add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
-(add-to-list 'auto-mode-alist '("components\\/.*\\.js\\'" . rjsx-mode))
-(add-to-list 'auto-mode-alist '("screens\\/.*\\.js\\'" . rjsx-mode))
-
+(use-package web-mode
+    :ensure t
+    :config
+    (add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
+)
 
 ;; Javascript
-(add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
-(setq js2-include-node-externs t)
+(use-package js2-mode
+    :ensure t
+    :config
+    (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+    (setq js2-include-node-externs t)
+)
 #+END_SRC
 
 
 
 *** Scheme
 #+BEGIN_SRC emacs-lisp
-(add-to-list 'auto-mode-alist '("\\.scheme\\'" . scheme-mode))
-(add-to-list 'auto-mode-alist '("\\.scm\\'" . scheme-mode))
+(use-package scheme
+    :ensure t
+    :config
+    (add-to-list 'auto-mode-alist '("\\.scheme\\'" . scheme-mode))
+    (add-to-list 'auto-mode-alist '("\\.scm\\'" . scheme-mode))
+)
 #+END_SRC
 
 
 *** React native
 #+BEGIN_SRC emacs-lisp
-(add-to-list 'auto-mode-alist '("components\\/.*\\.js\\'" . rjsx-mode))
-(add-to-list 'auto-mode-alist '("screens\\/.*\\.js\\'" . rjsx-mode))
+(use-package rjsx-mode
+    :ensure t
+    :config
+    (add-to-list 'auto-mode-alist '("components\\/.*\\.js\\'" . rjsx-mode))
+    (add-to-list 'auto-mode-alist '("screens\\/.*\\.js\\'" . rjsx-mode))
+)
 #+END_SRC
 
 
 *** Haskell
 #+BEGIN_SRC emacs-lisp
-(require 'company-ghci)
-(push 'company-ghci company-backends)
-(add-hook 'haskell-mode-hook 'turn-on-pretty-mode)
-(add-hook 'haskell-mode-hook 'company-mode)
-;; Completions in REPL
-(add-hook 'haskell-interactive-mode-hook 'company-mode)
+(use-package company-ghci
+    :ensure t
+    :config
+    (push 'company-ghci company-backends)
+    (add-hook 'haskell-mode-hook 'turn-on-pretty-mode)
+    (add-hook 'haskell-mode-hook 'company-mode)
+    ;; Completions in REPL
+    (add-hook 'haskell-interactive-mode-hook 'company-mode)
+)
 #+END_SRC
 
 
@@ -402,7 +463,11 @@ end
 
 *** W3M
 #+BEGIN_SRC emacs-lisp
-(setq w3m-default-display-inline-images t)
+(use-package w3m
+    :ensure t
+    :config
+    (setq w3m-default-display-inline-images t)
+)
 #+END_SRC
 
 

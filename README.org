@@ -2,8 +2,6 @@
 #+LANGUAGE: en
 
 - Emacs version: *28.2*
-- last-update: <2023-04-11 Tue>
-
 
 ** Fish macro
 #+BEGIN_SRC fish
@@ -248,9 +246,6 @@ end
 
 *** Web
 #+BEGIN_SRC emacs-lisp
-  ;;(with-eval-after-load 'lsp-mode
-  ;;  (mapc #'lsp-flycheck-add-mode '(typescript-mode js2-mode css-mode vue-html-mode web-mode rjsx-mode)))
-
   ;; Front end modes
   (use-package web-mode
       :ensure t
@@ -278,4 +273,13 @@ end
     :ensure t
     :config
      (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode)))
+#+END_SRC
+
+
+*** Shell
+#+BEGIN_SRC emacs-lisp
+  (use-package fish-mode
+    :ensure t
+    :config
+    (add-to-list 'auto-mode-alist '("\\.fish\\'" . fish-mode)))
 #+END_SRC

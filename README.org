@@ -1,6 +1,5 @@
-#+TITLE: EMACS CONFIG 2.0
+#+TITLE: EMACS CONFIG 2.1.0
 #+LANGUAGE: en
-#+OPTIONS H:5 toc:nil creator:Cédric Legendre timestamp:t
 
 - Emacs version: *28.2*
 - last-update: <2023-04-11 Tue>
@@ -89,13 +88,9 @@ end
     ;; EMACS THEME ;;
     ;;=============;;
 
-    ;; Gruvbox theme
-    (use-package gruvbox-theme
-    :ensure t
-    :load-path "themes"
-    :config
-    (load-theme 'gruvbox-dark-hard t)
-    )
+    ;; Camron theme
+    (add-to-list 'custom-theme-load-path "/home/cedric/.emacs.d/camron-theme.el")
+    (load-theme 'camron t)
 
     ;; Remove menu, tool and scroll bars
     (menu-bar-mode -1)
@@ -110,15 +105,15 @@ end
     ;; Linum mode
     (global-linum-mode t)
     (setq linum-format "%4d  ")
-    (set-face-attribute 'linum nil :background "unspecified-bg")
-    (set-face-attribute 'linum nil :foreground "#afaf00")
+    ;; (set-face-attribute 'linum nil :background "unspecified-bg")
+    ;; (set-face-attribute 'linum nil :foreground "#afaf00")
 
     ;; Setup font
     (add-to-list 'default-frame-alist '(font . "Hasklug Nerd Font 12"))
 
     ;; Icons mode
     (use-package all-the-icons
-    :ensure t
+    :if (display-graphic-p)
     :config
     (setq all-the-icons-color-icons 11)
     (setq inhibit-compacting-font-caches t)
@@ -142,6 +137,15 @@ end
     (use-package pretty-mode
     :ensure t
     )
+
+  ;; Rainbow
+  (use-package rainbow-mode
+    :ensure t
+    :config
+    (define-globalized-minor-mode global-rainbow-mode rainbow-mode
+      (lambda () (rainbow-mode t)))
+    (global-rainbow-mode t)
+    )
 #+END_SRC
 
 
@@ -158,13 +162,6 @@ end
         (tab-mark     ?\t    [?\u2502 ?\t] [?\\ ?\t])))
 
   (setq whitespace-style '(face trailing tabs newline tab-mark newline-mark))
-
-  (set-face-background 'whitespace-tab "#unspecified-bg")
-  (set-face-foreground 'whitespace-tab "#2b3c44")
-  (set-face-background 'whitespace-space "unspecified-bg")
-  (set-face-foreground 'whitespace-space "#111111")
-  (set-face-background 'whitespace-newline "unspecified-bg")
-  (set-face-foreground 'whitespace-newline "#2b3c44")
 
   (global-whitespace-mode t)
 
@@ -238,6 +235,7 @@ end
     :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
            (web-mode . lsp)
            (js2-mode . lsp)
+           (sh-mode . lsp)
            (typescript-mode . lsp)
            ;; if you want which-key integration
            (lsp-mode . lsp-enable-which-key-integration))

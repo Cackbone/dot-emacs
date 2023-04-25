@@ -28,32 +28,35 @@ end
 
 ** Init
 #+BEGIN_SRC emacs-lisp
-;; Update packages
-(use-package auto-package-update
-   :ensure t
-   :init
-   (setq auto-package-update-delete-old-versions t
-         auto-package-update-interval 4)
-   (auto-package-update-maybe))
+  ;; Update packages
+  (use-package auto-package-update
+     :ensure t
+     :init
+     (setq auto-package-update-delete-old-versions t
+           auto-package-update-interval 4)
+     (auto-package-update-maybe))
 
 
-;; Save backups inside a unique folder
-(let ((backup-dir "~/.emacs/.backups")
-      (auto-saves-dir "~/.emacs/.backups"))
-  (dolist (dir (list backup-dir auto-saves-dir))
-    (when (not (file-directory-p dir))
-      (make-directory dir t)))
-  (setq backup-directory-alist `(("." . ,backup-dir))
-        auto-save-file-name-transforms `((".*" ,auto-saves-dir t))
-        auto-save-list-file-prefix (concat auto-saves-dir ".saves-")
-        tramp-backup-directory-alist `((".*" . ,backup-dir))
-        tramp-auto-save-directory auto-saves-dir))
+  ;; Save backups inside a unique folder
+  (let ((backup-dir "~/.emacs/.backups")
+        (auto-saves-dir "~/.emacs/.backups"))
+    (dolist (dir (list backup-dir auto-saves-dir))
+      (when (not (file-directory-p dir))
+        (make-directory dir t)))
+    (setq backup-directory-alist `(("." . ,backup-dir))
+          auto-save-file-name-transforms `((".*" ,auto-saves-dir t))
+          auto-save-list-file-prefix (concat auto-saves-dir ".saves-")
+          tramp-backup-directory-alist `((".*" . ,backup-dir))
+          tramp-auto-save-directory auto-saves-dir))
 
-(setq backup-by-copying t    ; Don't delink hardlinks
-      delete-old-versions t  ; Clean up the backups
-      version-control t      ; Use version numbers on backups,
-      kept-new-versions 10    ; keep some new versions
-      kept-old-versions 5)   ; and some old ones, too
+  (setq backup-by-copying t    ; Don't delink hardlinks
+        delete-old-versions t  ; Clean up the backups
+        version-control t      ; Use version numbers on backups,
+        kept-new-versions 10    ; keep some new versions
+        kept-old-versions 5)   ; and some old ones, too
+
+  ;; Use so long mode to avoid slowing down emacs when file is big
+  (global-so-long-mode 1) ; Emacs >= 27
  #+END_SRC
 
 
@@ -82,59 +85,52 @@ end
 ** Theme and UI
 
 #+BEGIN_SRC emacs-lisp
-    ;;=============;;
-    ;; EMACS THEME ;;
-    ;;=============;;
+  ;;=============;;
+  ;; EMACS THEME ;;
+  ;;=============;;
 
-    ;; Camron theme
-    (add-to-list 'custom-theme-load-path "/home/cedric/.emacs.d/camron-theme.el")
-    (load-theme 'camron t)
+  ;; Camron theme
+  (add-to-list 'custom-theme-load-path "~/.emacs.d/camron-theme.el")
+  (load-theme 'camron t)
 
-    ;; Remove menu, tool and scroll bars
-    (menu-bar-mode -1)
-    (tool-bar-mode -1)
-    (defun my/disable-scroll-bars (frame)
-    (modify-frame-parameters frame
-    '((vertical-scroll-bars . nil)
-    (horizontal-scroll-bars . nil))))
-    (add-hook 'after-make-frame-functions 'my/disable-scroll-bars)
+  ;; Remove menu, tool and scroll bars
+  (menu-bar-mode -1)
+  (tool-bar-mode -1)
+  (add-hook 'after-make-frame-functions
+            (lambda (frame)
+              (modify-frame-parameters frame
+                                       '((vertical-scroll-bars . nil)
+                                         (horizontal-scroll-bars . nil)))))
 
 
-    ;; Linum mode
-    (global-linum-mode t)
-    (setq linum-format "%4d  ")
-    ;; (set-face-attribute 'linum nil :background "unspecified-bg")
-    ;; (set-face-attribute 'linum nil :foreground "#afaf00")
+  ;; Line number mode
+  (global-display-line-numbers-mode t)
+  (setq-default display-line-numbers-width 4)
+  ;; (setq linum-format "%4d  ") ; TODO: Find an alternative for this
 
-    ;; Setup font
-    (add-to-list 'default-frame-alist '(font . "Hasklug Nerd Font 12"))
 
-    ;; Icons mode
-    (use-package all-the-icons
+  ;; Setup font
+  (add-to-list 'default-frame-alist '(font . "Hasklug Nerd Font 12"))
+
+  ;; Icons mode
+  (use-package all-the-icons
     :if (display-graphic-p)
     :config
     (setq all-the-icons-color-icons 11)
-    (setq inhibit-compacting-font-caches t)
-    )
+    (setq inhibit-compacting-font-caches t))
 
-    ;; Modeline mode
-    ;;(use-package spaceline
-    ;;    :ensure t
-    ;;    :config
-    ;;    (column-number-mode)
-    ;;)
-    (use-package spaceline :ensure t
+  ;; Spaceline
+  (use-package spaceline
+    :ensure t
     :config
     (use-package spaceline-config
-  :config
-  (spaceline-spacemacs-theme)
-  (column-number-mode)))
+      :config
+      (spaceline-spacemacs-theme)
+      (column-number-mode)))
 
 
-    ;; Pretty mode
-    (use-package pretty-mode
-    :ensure t
-    )
+  ;; Pretty mode
+  (use-package pretty-mode :ensure t)
 
   ;; Rainbow
   (use-package rainbow-mode
@@ -142,8 +138,7 @@ end
     :config
     (define-globalized-minor-mode global-rainbow-mode rainbow-mode
       (lambda () (rainbow-mode t)))
-    (global-rainbow-mode t)
-    )
+    (global-rainbow-mode t))
 #+END_SRC
 
 
@@ -235,6 +230,7 @@ end
            (js2-mode . lsp)
            (sh-mode . lsp)
            (typescript-mode . lsp)
+           (rust-mode . lsp)
            ;; if you want which-key integration
            (lsp-mode . lsp-enable-which-key-integration))
     :commands lsp)
@@ -244,26 +240,25 @@ end
 #+END_SRC
 
 
+
 *** Web
 #+BEGIN_SRC emacs-lisp
   ;; Front end modes
   (use-package web-mode
       :ensure t
-      :config
-      (add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
-      (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
-      (add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
-      (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
-      (add-to-list 'auto-mode-alist '("\\.jsx\\'" . web-mode))
-      (add-to-list 'auto-mode-alist '("\\.cjs\\'" . web-mode))
-      (add-to-list 'auto-mode-alist '("\\.svelte\\'" . web-mode))
-  )
+      :mode ("\\.html\\'"
+             "\\.css\\'"
+             "\\.vue\\'"
+             "\\.tsx\\'"
+             "\\.jsx\\'"
+             "\\.cjs\\'"
+             "\\.svelte\\'"))
 
   ;; Javascript
   (use-package js2-mode
       :ensure t
+      :mode "\\.js\\'"
       :config
-      (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
       (setq js2-include-node-externs t)
       (add-hook 'js2-mode-hook 'lsp)
   )
@@ -271,8 +266,16 @@ end
   ;; Typescript
   (use-package typescript-mode
     :ensure t
-    :config
-     (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode)))
+    :mode "\\.ts\\'")
+#+END_SRC
+
+*** Config
+#+BEGIN_SRC emacs-lisp
+
+  (use-package json-mode
+      :ensure t
+      :mode "\\.json\\'"
+      :hook (json-mode . json-pretty-print-buffer))
 #+END_SRC
 
 
@@ -280,6 +283,13 @@ end
 #+BEGIN_SRC emacs-lisp
   (use-package fish-mode
     :ensure t
-    :config
-    (add-to-list 'auto-mode-alist '("\\.fish\\'" . fish-mode)))
+    :mode "\\.fish\\'")
+#+END_SRC
+
+
+*** Sys prog
+#+BEGIN_SRC emacs-lisp
+  (use-package rust-mode
+    :ensure t
+    :mode "\\.rs\\'")
 #+END_SRC

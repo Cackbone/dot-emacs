@@ -196,22 +196,22 @@ end
 
 *** Enable Flycheck and Company globally
 #+BEGIN_SRC emacs-lisp
-    (use-package flycheck
-        :ensure t
-        :config
-        (global-flycheck-mode))
+  (use-package flycheck
+      :ensure t
+      :config
+      (global-flycheck-mode))
 
-    (use-package company
-        :ensure t
-        :config
-        (add-hook 'after-init-hook 'global-company-mode)
-        (setq lsp-completion-provider :capf))
+  (use-package company
+      :ensure t
+      :config
+      (add-hook 'after-init-hook 'global-company-mode)
+      (setq lsp-completion-provider :capf))
 
-    ;; Trigger completion immediately.
-    (setq company-idle-delay 0)
+  ;; Trigger completion immediately.
+  (setq company-idle-delay 0)
 
-    ;; Number the candidates (use M-1, M-2 etc to select completions).
-    (setq company-show-numbers t)
+  ;; Number the candidates (use M-1, M-2 etc to select completions).
+  (setq company-show-numbers t)
 #+END_SRC
 
 *** Language Server Protocol
@@ -231,12 +231,13 @@ end
            (sh-mode . lsp)
            (typescript-mode . lsp)
            (rust-mode . lsp)
-           ;; if you want which-key integration
            (lsp-mode . lsp-enable-which-key-integration))
     :commands lsp)
 
   ;; lsp ui
-  (use-package lsp-ui :ensure t :commands lsp-ui-mode)
+  (use-package lsp-ui
+    :ensure t
+    :commands lsp-ui-mode)
 #+END_SRC
 
 

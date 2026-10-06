@@ -1,15 +1,15 @@
+;;; init.el --- load the literate config  -*- lexical-binding: t; -*-
+;; Goes in ~/.emacs.d/init.el (a copy or a symlink). The config itself is README.org, as
+;; ~/.emacs.d/config.org; it's tangled to config.el when it changes.
+
+;; M-x customize writes to custom.el, not here
+(setq custom-file (locate-user-emacs-file "custom.el"))
+(when (file-exists-p custom-file)
+  (load custom-file nil t))
+
 ;; Load global config
 (when (file-readable-p "~/.emacs.d/config.org")
   (org-babel-load-file (expand-file-name (concat user-emacs-directory "config.org"))))
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages '(gcmh auto-package-update use-package)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+
+(put 'upcase-region 'disabled nil)
+(put 'downcase-region 'disabled nil)

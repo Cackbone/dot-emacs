@@ -1,13 +1,28 @@
-#+TITLE: EMACS CONFIG 2.1.0
+#+TITLE: EMACS CONFIG 3.0.0
 #+LANGUAGE: en
 
-- Emacs version: *28.2*
+- Emacs version: *31* (needs 30+: built-in which-key, use-package with ~:vc~)
+- Mostly used as a server (~emacs --daemon~), from two fish functions:
+  - ~ne [files]~: a plain, quick window;
+  - ~nee [file or folder]~: the IDE layout, a large window with the file tree (treemacs) on
+    the left and Claude Code on the right, reusing the project's running Claude session.
+  Terminal frames: ~emacsclient -t~.
+- Keys: ~F8~ file tree, ~F9~ Claude Code, ~C-c C-'~ Claude Code's menu.
+- Theme: [[./camron-theme/camron-theme.el][camron]], dark navy with neon magenta and cyan.
 
 ** Fish macro
+A quick window (~nee~, the IDE layout, is under Claude Code below).
 #+BEGIN_SRC fish
 function ne
     emacsclient -ncu -a "" $argv &
 end
+#+END_SRC
+
+
+** Lexical binding
+The tangled ~config.el~ needs this cookie on its first line (Emacs 30+ warns otherwise).
+#+BEGIN_SRC emacs-lisp
+;;; config.el --- tangled from README.org, edit that instead  -*- lexical-binding: t; -*-
 #+END_SRC
 
 
@@ -17,25 +32,19 @@ end
 ;; Melpa config ;;
 ;;==============;;
 
+;; (packages are already activated before init.el: no `package-initialize' here)
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
-;; Comment/uncomment this line to enable MELPA Stable if desired.  See `package-archive-priorities`
-;; and `package-pinned-packages`. Most users will not need or want to do this.
-;;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
-(package-initialize)
+(require 'use-package)
+(setq use-package-always-ensure t)
 #+END_SRC
 
 
 ** Init
 #+BEGIN_SRC emacs-lisp
-  ;; Update packages
-  (use-package auto-package-update
-     :ensure t
-     :init
-     (setq auto-package-update-delete-old-versions t
-           auto-package-update-interval 4)
-     (auto-package-update-maybe))
-
+  ;; Packages are updated on demand, never at startup (it used to contact the package
+  ;; servers at every server start, and hang when one of them didn't answer):
+  ;;   M-x package-upgrade-all
 
   ;; Save backups inside a unique folder
   (let ((backup-dir "~/.emacs/.backups")
@@ -56,23 +65,34 @@ end
         kept-old-versions 5)   ; and some old ones, too
 
   ;; Use so long mode to avoid slowing down emacs when file is big
-  (global-so-long-mode 1) ; Emacs >= 27
+  (global-so-long-mode 1)
+
+  ;; Remember things across sessions: minibuffer history, recent files, cursor positions
+  (savehist-mode 1)
+  (recentf-mode 1)
+  (save-place-mode 1)
+
+  ;; Small comforts
+  (setq use-short-answers t                ; y/n instead of yes/no
+        ring-bell-function #'ignore
+        inhibit-startup-screen t)
+  (electric-pair-mode 1)                    ; matching brackets and quotes
+  (global-auto-revert-mode 1)               ; files changed on disk (git…) reload
+  (setq vc-follow-symlinks t)               ; symlinks into a git repo: just open the file
  #+END_SRC
 
 
 ** Server initialization
 #+BEGIN_SRC emacs-lisp
-;; Emacs server
+;; Emacs server: started by `emacs --daemon' (or `ne'); a plain `emacs' starts one too,
+;; unless one already runs
 (require 'server)
-(server-start)
-; (setq server-use-tcp t)
-; (setq server-host "10.0.1.169")
-; (setq server-port 6363)
+(unless (or (daemonp) (server-running-p))
+  (server-start))
 
 
 ;; Garbage collection
 (use-package gcmh
-  :ensure t
   :config
   (setq gcmh-idle-delay 10 ; garbage collect after 10s of idle time
         gcmh-high-cons-threshold 16777216) ; 16mb
@@ -89,56 +109,184 @@ end
   ;; EMACS THEME ;;
   ;;=============;;
 
-  ;; Camron theme
-  (add-to-list 'custom-theme-load-path "~/.emacs.d/camron-theme.el")
+  ;; Camron theme (~/.emacs.d/camron-theme.el)
+  (use-package autothemer)
+  (add-to-list 'custom-theme-load-path user-emacs-directory)
   (load-theme 'camron t)
 
-  ;; Remove menu, tool and scroll bars
+  ;; No menu, tool or scroll bars, in every frame (also the daemon's later GUI frames)
   (menu-bar-mode -1)
   (tool-bar-mode -1)
-  (add-hook 'after-make-frame-functions
-            (lambda (frame)
-              (modify-frame-parameters frame
-                                       '((vertical-scroll-bars . nil)
-                                         (horizontal-scroll-bars . nil)))))
+  (scroll-bar-mode -1)
+  (add-to-list 'default-frame-alist '(vertical-scroll-bars . nil))
+  (add-to-list 'default-frame-alist '(horizontal-scroll-bars . nil))
+  (add-to-list 'default-frame-alist '(internal-border-width . 8))
+  ;; no GTK title bar (and its ×): the window manager draws the window's border
+  (add-to-list 'default-frame-alist '(undecorated . t))
 
-
-  ;; Line number mode
-  (global-display-line-numbers-mode t)
+  ;; Line numbers in code and text, not in terminals or Claude
   (setq-default display-line-numbers-width 4)
-  ;; (setq linum-format "%4d  ") ; TODO: Find an alternative for this
+  (add-hook 'prog-mode-hook #'display-line-numbers-mode)
+  (add-hook 'text-mode-hook #'display-line-numbers-mode)
+  (add-hook 'conf-mode-hook #'display-line-numbers-mode)
+  (global-hl-line-mode 1)
+  (column-number-mode 1)
 
+  ;; Font: a Nerd Font, for the icons (mode line, file tree)
+  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font 12"))
 
-  ;; Setup font
-  (add-to-list 'default-frame-alist '(font . "Hasklug Nerd Font 12"))
+  ;; Smooth scrolling in GUI frames
+  (pixel-scroll-precision-mode 1)
 
-  ;; Icons mode
-  (use-package all-the-icons
-    :if (display-graphic-p)
+  ;; Icons: Nerd Font glyphs, in GUI and terminal frames alike
+  (use-package nerd-icons)
+
+  ;; Mode line
+  (use-package doom-modeline
     :config
-    (setq all-the-icons-color-icons 11)
-    (setq inhibit-compacting-font-caches t))
+    (setq doom-modeline-height 28
+          doom-modeline-bar-width 4
+          doom-modeline-buffer-file-name-style 'relative-to-project
+          doom-modeline-major-mode-icon t)
+    (doom-modeline-mode 1))
 
-  ;; Spaceline
-  (use-package spaceline
-    :ensure t
-    :config
-    (use-package spaceline-config
-      :config
-      (spaceline-spacemacs-theme)
-      (column-number-mode)))
+  ;; Symbols: lambda → λ… (built-in; replaces the unmaintained pretty-mode)
+  (global-prettify-symbols-mode 1)
 
-
-  ;; Pretty mode
-  (use-package pretty-mode :ensure t)
-
-  ;; Rainbow
+  ;; Rainbow: colour codes shown in their colour; nested parens in rainbow colours
   (use-package rainbow-mode
-    :ensure t
+    :hook ((prog-mode conf-mode css-mode web-mode) . rainbow-mode))
+  (use-package rainbow-delimiters
+    :hook (prog-mode . rainbow-delimiters-mode))
+#+END_SRC
+
+
+** Terminal frames
+~emacsclient -t~ (or ~emacs -nw~): mouse, and copy to the system clipboard.
+#+BEGIN_SRC emacs-lisp
+  (xterm-mouse-mode 1)                      ; clicks, wheel, drag in terminal frames
+  ;; copying in a terminal frame reaches the system clipboard (OSC 52: kitty, foot, WezTerm…)
+  (setq xterm-extra-capabilities '(setSelection))
+#+END_SRC
+
+
+** Minibuffer completion
+Vertical list, matching in any order, with notes beside each candidate.
+#+BEGIN_SRC emacs-lisp
+  (use-package vertico
+    :config (vertico-mode 1))
+
+  (use-package orderless
     :config
-    (define-globalized-minor-mode global-rainbow-mode rainbow-mode
-      (lambda () (rainbow-mode t)))
-    (global-rainbow-mode t))
+    (setq completion-styles '(orderless basic)
+          completion-category-overrides '((file (styles basic partial-completion)))))
+
+  (use-package marginalia
+    :config (marginalia-mode 1))
+
+  ;; Key hints after a prefix key (built-in since Emacs 30)
+  (which-key-mode 1)
+#+END_SRC
+
+
+** File tree
+~F8~ toggles treemacs on the left (the current project; Nerd Font icons). Not opened at
+startup: ~ne~ stays a plain quick window, ~nee~ opens the IDE layout (below).
+#+BEGIN_SRC emacs-lisp
+  (use-package treemacs
+    :bind ([f8] . treemacs)
+    :config
+    (setq treemacs-width 32
+          treemacs-is-never-other-window t        ; C-x o skips it
+          treemacs-follow-after-init t
+          treemacs-collapse-dirs 3)
+    (treemacs-follow-mode 1)                    ; the tree follows the file you're in
+    (treemacs-filewatch-mode 1)
+    (treemacs-git-mode 'simple)
+    (treemacs-fringe-indicator-mode 'always))
+
+  (use-package treemacs-nerd-icons
+    :after treemacs
+    :config (treemacs-load-theme "nerd-icons"))
+#+END_SRC
+
+The tree's footer: where the project stands in git (project, branch and its ↑↓ to the
+remote, modified ● and untracked ✚ files, ✓ when clean), refreshed every 5 s.
+#+BEGIN_SRC emacs-lisp
+  (defface my/tree-footer-name   '((t :foreground "#e040fb" :weight bold)) "Tree footer: project.")
+  (defface my/tree-footer-branch '((t :foreground "#76e6f2")) "Tree footer: branch.")
+  (defface my/tree-footer-dirty  '((t :foreground "#ffd166")) "Tree footer: modified files.")
+  (defface my/tree-footer-new    '((t :foreground "#76e6f2")) "Tree footer: untracked files.")
+  (defface my/tree-footer-clean  '((t :foreground "#69ff47")) "Tree footer: nothing to commit.")
+  (defface my/tree-footer-dim    '((t :foreground "#8b8bc7")) "Tree footer: ahead / behind.")
+
+  (defvar-local my/tree-footer nil "(ROOT BRANCH AHEAD BEHIND MODIFIED UNTRACKED), or (ROOT).")
+
+  (defun my/tree-footer--root ()
+    (when-let* ((ws (treemacs-current-workspace))
+                (project (car (treemacs-workspace->projects ws))))
+      (treemacs-project->path project)))
+
+  (defun my/tree-footer-update ()
+    "Refresh the git summary of every visible tree."
+    (dolist (b (buffer-list))
+      (when (and (eq (buffer-local-value 'major-mode b) 'treemacs-mode) (get-buffer-window b t))
+        (with-current-buffer b
+          (when-let* ((root (my/tree-footer--root)))
+            (let* ((default-directory (file-name-as-directory root))
+                   (lines (ignore-errors (process-lines "git" "status" "--porcelain=v1" "-b"))))
+              (setq my/tree-footer
+                    (if (null lines)
+                        (list root)
+                      (let ((head (car lines)) (files (cdr lines)))
+                        (list root
+                              (and (string-match "^## \\(?:No commits yet on \\)?\\([^. ]+\\)" head)
+                                   (match-string 1 head))
+                              (and (string-match "ahead \\([0-9]+\\)" head) (string-to-number (match-string 1 head)))
+                              (and (string-match "behind \\([0-9]+\\)" head) (string-to-number (match-string 1 head)))
+                              (seq-count (lambda (l) (not (string-prefix-p "??" l))) files)
+                              (seq-count (lambda (l) (string-prefix-p "??" l)) files)))))
+              (force-mode-line-update)))))))
+
+  (defun my/tree-footer-line ()
+    "The tree's mode line; the branch name shortens with … so the counts always show."
+    (pcase-let ((`(,root ,branch ,ahead ,behind ,modified ,untracked) my/tree-footer)
+                (esc (lambda (s) (string-replace "%" "%%" s))))
+      (if (null root)
+          ""
+        (let* ((name (file-name-nondirectory (directory-file-name root)))
+               (sync (concat (if ahead (format " ↑%d" ahead) "") (if behind (format " ↓%d" behind) "")))
+               (state (cond ((null branch) "")
+                            ((and (eq modified 0) (eq untracked 0)) (propertize "✓" 'face 'my/tree-footer-clean))
+                            (t (string-trim-right
+                                (concat (if (> modified 0) (propertize (format "●%d " modified) 'face 'my/tree-footer-dirty) "")
+                                        (if (> untracked 0) (propertize (format "✚%d" untracked) 'face 'my/tree-footer-new) ""))))))
+               ;; room left for the branch: window width − name, separators, icon, ↑↓, counts
+               (room (- (window-total-width) 1 (length name) 2 2 (length sync) 2 (length state) 1))
+               (br (and branch (if (> (length branch) (max 3 room))
+                                   (concat (substring branch 0 (max 2 (1- room))) "…")
+                                 branch))))
+          (concat " " (propertize (funcall esc name) 'face 'my/tree-footer-name)
+                  (when br
+                    (concat "  " (propertize (concat "\ue0a0 " (funcall esc br)) 'face 'my/tree-footer-branch)
+                            (propertize sync 'face 'my/tree-footer-dim)
+                            "  " state)))))))
+
+  (add-hook 'treemacs-mode-hook
+            (lambda ()
+              (setq-local mode-line-format '((:eval (my/tree-footer-line))))
+              (face-remap-add-relative 'default :height 0.85)       ; smaller text, like Claude's
+              (run-at-time 0.5 nil #'my/tree-footer-update))
+            t)
+  (run-with-timer 3 5 #'my/tree-footer-update)
+#+END_SRC
+
+
+** Org
+#+BEGIN_SRC emacs-lisp
+  ;; Shift+arrows select text in Org too, like everywhere else (Org would use them to cycle
+  ;; TODO states, priorities, list bullets and dates: C-c C-t, C-c , and C-c C-x / C-c C-y do that)
+  (setq org-support-shift-select 'always)
 #+END_SRC
 
 
@@ -152,10 +300,11 @@ end
   (setq whitespace-display-mappings
       '((space-mark   ?\     [?.]     [?.])
         (newline-mark ?\n    [?◀ ?\n])
-        (tab-mark     ?\t    [?\u2502 ?\t] [?\\ ?\t])))
+        (tab-mark     ?\t    [?│ ?\t] [?\\ ?\t])))
 
   (setq whitespace-style '(face trailing tabs newline tab-mark newline-mark))
 
+  (setq whitespace-global-modes '(not eat-mode term-mode vterm-mode))   ; not in terminals
   (global-whitespace-mode t)
 
   (add-hook 'before-save-hook 'whitespace-cleanup)
@@ -172,10 +321,7 @@ end
 
 #+BEGIN_SRC emacs-lisp
   (use-package ligature
-      :ensure t
       :config
-      ;(ligature-set-ligatures '(web-mode) '("<!--" "-->" "</>" "</" "/>" "://"))
-      ;(ligature-set-ligatures '(typescript-mode js2-mode) '("=>" "==" "===" "!=" "!==" "??" "||" "&&" "..." ">=" "<="))
       (ligature-set-ligatures 'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
                                        ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
                                        "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
@@ -197,21 +343,15 @@ end
 *** Enable Flycheck and Company globally
 #+BEGIN_SRC emacs-lisp
   (use-package flycheck
-      :ensure t
       :config
       (global-flycheck-mode))
 
   (use-package company
-      :ensure t
+      :hook (after-init . global-company-mode)
       :config
-      (add-hook 'after-init-hook 'global-company-mode)
+      (setq company-idle-delay 0                ; complete immediately
+            company-show-quick-access t)        ; numbered candidates: M-1, M-2…
       (setq lsp-completion-provider :capf))
-
-  ;; Trigger completion immediately.
-  (setq company-idle-delay 0)
-
-  ;; Number the candidates (use M-1, M-2 etc to select completions).
-  (setq company-show-numbers t)
 #+END_SRC
 
 *** Language Server Protocol
@@ -221,12 +361,12 @@ end
   ;;==========;;
 
   (use-package lsp-mode
-    :ensure t
     :init
     ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
     (setq lsp-keymap-prefix "C-c l")
-    :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
-           (web-mode . lsp)
+    ;; the project is the git root: no "Import project?" question on a project's first file
+    (setq lsp-auto-guess-root t)
+    :hook ((web-mode . lsp)
            (js2-mode . lsp)
            (sh-mode . lsp)
            (typescript-mode . lsp)
@@ -236,7 +376,6 @@ end
 
   ;; lsp ui
   (use-package lsp-ui
-    :ensure t
     :commands lsp-ui-mode)
 #+END_SRC
 
@@ -246,7 +385,6 @@ end
 #+BEGIN_SRC emacs-lisp
   ;; Front end modes
   (use-package web-mode
-      :ensure t
       :mode ("\\.html\\'"
              "\\.css\\'"
              "\\.vue\\'"
@@ -255,35 +393,29 @@ end
              "\\.cjs\\'"
              "\\.svelte\\'"))
 
-  ;; Javascript
+  ;; Javascript (lsp starts from the lsp-mode hook above)
   (use-package js2-mode
-      :ensure t
       :mode "\\.js\\'"
       :config
-      (setq js2-include-node-externs t)
-      (add-hook 'js2-mode-hook 'lsp)
-  )
+      (setq js2-include-node-externs t))
 
   ;; Typescript
   (use-package typescript-mode
-    :ensure t
     :mode "\\.ts\\'")
 #+END_SRC
 
 *** Config
 #+BEGIN_SRC emacs-lisp
-
+  ;; (no more pretty-printing on open: it changed every JSON file you looked at;
+  ;;  M-x json-pretty-print-buffer when you want it)
   (use-package json-mode
-      :ensure t
-      :mode "\\.json\\'"
-      :hook (json-mode . json-pretty-print-buffer))
+      :mode "\\.json\\'")
 #+END_SRC
 
 
 *** Shell
 #+BEGIN_SRC emacs-lisp
   (use-package fish-mode
-    :ensure t
     :mode "\\.fish\\'")
 #+END_SRC
 
@@ -291,6 +423,195 @@ end
 *** Sys prog
 #+BEGIN_SRC emacs-lisp
   (use-package rust-mode
-    :ensure t
     :mode "\\.rs\\'")
+#+END_SRC
+
+
+** Claude Code
+Claude Code in an Emacs buffer that knows about Emacs: it sees the open files and the
+selection, shows its edits as diffs (ediff), and can use LSP / flycheck information.
+~C-c C-'~ opens its menu (new session, continue, send the region…); ~F9~ shows / hides it. Runs in eat, a terminal
+written in Emacs Lisp (nothing to compile).
+#+BEGIN_SRC emacs-lisp
+  ;; a Claude started here is a normal session even when this Emacs was launched from inside
+  ;; one (it inherits CLAUDE_CODE_CHILD_SESSION…: "transcript saving is off", no --resume)
+  (setq process-environment
+        (seq-remove (lambda (v) (string-match-p "\\`\\(CLAUDE\\|CLAUDECODE\\)" v))
+                    process-environment))
+  ;; the full-screen renderer, as in a terminal: prompt and status pinned to the window's bottom
+  ;; (inside Emacs it otherwise falls back to the inline one, the prompt following the output)
+  (setenv "CLAUDE_CODE_NO_FLICKER" "1")
+
+  (use-package eat)
+
+  (use-package claude-code-ide
+    :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
+    :bind (("C-c C-'" . claude-code-ide-menu)
+           ([f9] . my/claude-code-ide-toggle))
+    :config
+    (setq claude-code-ide-terminal-backend 'eat)
+    ;; its window: 1.5 × treemacs's width (the tree's window when it's open, else its width
+    ;; setting), worked out each time it opens, and checked once shown
+    (defun my/claude-code-ide-width (&rest _)
+      (let ((tree (and (fboundp 'treemacs-get-local-window) (treemacs-get-local-window))))
+        (round (* 1.5 (if (window-live-p tree)
+                          (window-total-width tree)
+                        (if (boundp 'treemacs-width) treemacs-width 32))))))
+    (advice-add 'claude-code-ide--display-buffer-in-side-window :before
+                (lambda (&rest _)
+                  (setq claude-code-ide-window-width (my/claude-code-ide-width))))
+    (advice-add 'claude-code-ide--display-buffer-in-side-window :filter-return
+                (lambda (win)
+                  (when (window-live-p win)
+                    (let ((delta (- (my/claude-code-ide-width) (window-total-width win))))
+                      (unless (zerop delta)
+                        (ignore-errors (window-resize win delta t t))
+                        ;; tell the terminal (and so Claude) its new size: the package synced
+                        ;; it before this resize, and lines would wrap a few columns too late
+                        (my/claude-sync-size (window-buffer win)))))
+                  win))
+    (claude-code-ide-emacs-tools-setup))
+
+  ;; F9 (next to treemacs' F8): show / hide the project's Claude, starting one if it has none
+  (defun my/claude-code-ide-toggle ()
+    "Toggle this project's Claude Code window; start a session when there's none."
+    (interactive)
+    (require 'claude-code-ide)
+    (if (claude-code-ide-mcp--sessions-for-project (claude-code-ide--get-working-directory))
+        (claude-code-ide-toggle)
+      (claude-code-ide)))
+#+END_SRC
+
+*** Usage bars
+The context and 5-hour session bars sit in the Claude window's mode line, where they never
+wrap. Each Claude buffer reads them every 3 s from a file named after its Claude process,
+~$XDG_RUNTIME_DIR/claude-emacs/<pid>.json~: ~{"ctx": 23, "q5": 5, "reset": "16:50"}~ (context
+%, 5-hour session %, its reset time). Claude Code's status line command writes it: it gets
+those numbers from Claude Code (~.context_window.used_percentage~,
+~.rate_limits.five_hour~), and can tell it runs here from ~$INSIDE_EMACS~. Without that
+file, the line says it's waiting.
+#+BEGIN_SRC emacs-lisp
+  (defface my/claude-usage-label '((t :foreground "#8b8bc7")) "Usage bar labels.")
+  (defface my/claude-usage-empty '((t :foreground "#3b2a78")) "Usage bars, empty part.")
+  (defface my/claude-usage-high  '((t :foreground "#ff4f79")) "Usage bars past 80%.")
+
+  (defvar-local my/claude-usage nil "This Claude's last usage: ctx, q5, reset.")
+  (defvar-local my/small-text nil "The face remapping that shrinks this buffer's text.")
+
+  (defun my/claude-sync-size (buffer)
+    "Give BUFFER's terminal, and the Claude running in it, the size its window really fits.
+A font change doesn't resize the window, so nothing would tell them otherwise."
+    (when-let* ((win (get-buffer-window buffer t))
+                (proc (get-buffer-process buffer)))
+      (claude-code-ide--sync-terminal-dimensions buffer win)
+      (with-current-buffer buffer
+        (when (bound-and-true-p eat-terminal)
+          (let ((size (eat-term-size eat-terminal)))
+            (set-process-window-size proc (cdr size) (car size)))))))
+
+  (defun my/claude-usage--bar (label pct cells &optional note)
+    "LABEL, a bar of CELLS for PCT (cyan → magenta, red past 80%), the percentage, NOTE."
+    (let* ((pct (max 0 (min 100 pct)))
+           (n (round (* cells (/ pct 100.0))))
+           (bar (mapconcat
+                 (lambda (i)
+                   (propertize "━" 'face
+                               (cond ((>= i n) 'my/claude-usage-empty)
+                                     ((>= pct 80) 'my/claude-usage-high)
+                                     (t (let ((x (/ (float i) (max 1 (1- cells)))))
+                                          (list :foreground
+                                                (format "#%02x%02x%02x" (round (* x #xe0))
+                                                        (round (+ #xbc (* x (- #x40 #xbc))))
+                                                        (round (+ #xd4 (* x (- #xfb #xd4)))))))))))
+                 (number-sequence 0 (1- cells)) "")))
+      (concat (propertize label 'face 'my/claude-usage-label) " " bar " "
+              ;; "%%%%": the mode line reads "%" as a code of its own, so it's doubled once more
+              (propertize (format "%d%%%%" pct) 'face (if (>= pct 80) 'my/claude-usage-high 'my/claude-usage-label))
+              (if note (propertize (concat " ↻ " note) 'face 'my/claude-usage-label) ""))))
+
+  (defun my/claude-usage-line ()
+    "Mode line of a Claude window: its context and 5-hour session bars."
+    (let ((u my/claude-usage))
+      (if (null u)
+          (propertize "  waiting for Claude's first status…" 'face 'my/claude-usage-label)
+        (concat "  " (my/claude-usage--bar "ctx" (or (alist-get 'ctx u) 0) 10)
+                (when-let* ((q5 (alist-get 'q5 u)))
+                  (concat "   " (my/claude-usage--bar "5h" q5 8
+                                                     (let ((r (alist-get 'reset u)))
+                                                       (and (stringp r) (> (length r) 0) r)))))))))
+
+  (defun my/claude-usage-refresh ()
+    "Read each Claude buffer's usage file; redraw its mode line when it changed."
+    (dolist (b (buffer-list))
+      (when (buffer-local-value 'my/claude-usage-mode b)
+        (when-let* ((proc (get-buffer-process b))
+                    (pid (process-id proc))
+                    (f (expand-file-name (format "claude-emacs/%d.json" pid)
+                                         (or (getenv "XDG_RUNTIME_DIR") "/tmp")))
+                    ((file-readable-p f))
+                    (data (ignore-errors
+                            (json-parse-string (with-temp-buffer (insert-file-contents f) (buffer-string))
+                                               :object-type 'alist :null-object nil))))
+          (unless (equal data (buffer-local-value 'my/claude-usage b))
+            (with-current-buffer b
+              (setq my/claude-usage data)
+              (force-mode-line-update)))))))
+
+  (define-minor-mode my/claude-usage-mode
+    "Show this Claude's context and session bars as the window's mode line."
+    :lighter nil
+    (if my/claude-usage-mode
+        (progn
+          (setq-local mode-line-format '((:eval (my/claude-usage-line))))
+          ;; the wheel goes to Claude (its full-screen view scrolls the conversation and keeps
+          ;; the prompt in place), not to Emacs's smooth scrolling of the whole buffer
+          (setq-local pixel-scroll-precision-mode nil)
+          ;; never narrower than its default width (dragging the border stops there)
+          (setq-local window-min-width (my/claude-code-ide-width))
+          ;; smaller text than the files (85%): more fits in the side panel
+          (setq-local my/small-text (face-remap-add-relative 'default :height 0.85))
+          (let ((buf (current-buffer))) (run-at-time 0.3 nil #'my/claude-sync-size buf)))
+      (kill-local-variable 'mode-line-format)
+      (kill-local-variable 'pixel-scroll-precision-mode)
+      (kill-local-variable 'window-min-width)
+      (when (bound-and-true-p my/small-text) (face-remap-remove-relative my/small-text))))
+
+  (run-with-timer 2 3 #'my/claude-usage-refresh)
+  ;; every Claude window gets it when it's shown
+  (with-eval-after-load 'claude-code-ide
+    (advice-add 'claude-code-ide--display-buffer-in-side-window :filter-return
+                (lambda (win)
+                  (when (window-live-p win)
+                    (with-current-buffer (window-buffer win)
+                      (unless my/claude-usage-mode (my/claude-usage-mode 1))))
+                  win)))
+#+END_SRC
+
+*** IDE mode
+What the fish function ~nee~ opens: a large window with the file (or the folder, in dired),
+treemacs with its project on the left, Claude on the right (1.5 × treemacs's width). Claude
+is the project's running session if there is one in this Emacs, else a fresh one.
+#+BEGIN_SRC fish
+function nee --description 'Emacs in IDE mode: the file or folder, treemacs and Claude Code'
+    set -l target (path resolve -- (test (count $argv) -gt 0; and echo $argv[1]; or echo .))
+    set target (string replace -a '\\' '\\\\' -- $target | string replace -a '"' '\\"')
+    emacsclient -nc -a "" -F '((fullscreen . maximized))' -e "(my/ide \"$target\")" >/dev/null &
+end
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+  (defun my/ide (&optional path)
+    "Open PATH (a file, or a folder in dired) with treemacs and Claude Code beside it."
+    (let ((path (expand-file-name (or path default-directory))))
+      (if (file-directory-p path) (dired path) (find-file path))
+      (delete-other-windows)
+      (let ((main (selected-window)))
+        ;; the tree: this project only
+        (save-selected-window (treemacs-add-and-display-current-project-exclusively))
+        ;; Claude: the project's running session, else a new one
+        (require 'claude-code-ide)
+        (if (claude-code-ide-mcp--sessions-for-project (claude-code-ide--get-working-directory))
+            (claude-code-ide-switch-to-buffer)
+          (claude-code-ide))
+        (when (window-live-p main) (select-window main)))))
 #+END_SRC

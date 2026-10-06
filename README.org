@@ -8,7 +8,11 @@
     the left and Claude Code on the right, reusing the project's running Claude session.
   Terminal frames: ~emacsclient -t~.
 - Keys: ~F8~ file tree, ~F9~ Claude Code, ~C-c C-'~ Claude Code's menu.
-- Theme: [[./camron-theme/camron-theme.el][camron]], dark navy with neon magenta and cyan.
+- Theme: [[https://github.com/Cackbone/camron-theme][camron]], dark navy with neon magenta and cyan.
+
+[[https://raw.githubusercontent.com/Cackbone/camron-theme/main/screenshots/camron.png]]
+
+/The IDE layout (~nee~): the file tree, an Org file and Claude Code./
 
 ** Fish macro
 A quick window (~nee~, the IDE layout, is under Claude Code below).
